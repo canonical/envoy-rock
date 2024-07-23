@@ -1,0 +1,51 @@
+name: envoy
+base: bare
+build-base: ubuntu@22.04
+license: Apache-2.0
+
+version: '1.28.5'
+summary: Envoy is an open source edge and service proxy.
+description: |
+  Envoy is an open source edge and service proxy, designed for cloud-native applications.
+platforms:
+  amd64:
+#  arm64:
+
+parts:
+  envoy:
+    plugin: nil
+    source: https://github.com/envoyproxy/envoy.git
+    source-type: git
+    source-tag: v1.28.2
+    source-depth: 1
+    build-packages:
+      #https://github.com/envoyproxy/envoy/blob/v1.28.2/bazel/README.md#ubuntu
+      - wget
+      - autoconf
+      - curl
+      - libtool
+      - patch
+      - python3-pip
+      - unzip
+      - virtualenv
+
+      - libstdc++-12-dev
+
+      - libtinfo5 #requried for bazel/setup_clang.sh
+
+    override-build: |
+      # install balzel
+      wget -O /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-$([ $(uname -m) = "aarch64" ] && echo "arm64" || echo "amd64")
+      chmod +x /usr/local/bin/bazel
+  
+      
+      wget https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz
+      tar -xf clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz
+      bazel/setup_clang.sh clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04
+      
+      
+      sed -i 's/ignore_root_user_error = False/ignore_root_user_error = True/' bazel/repositories_extra.bzl
+      
+      export LLVM_ROOT=$PWD/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04
+      
+      bazel build --config=libc++ envoy --cxxopt="-Wno-error=thread-safety-reference-return"
