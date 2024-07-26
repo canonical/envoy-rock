@@ -41,26 +41,72 @@ parts:
       - libstdc++-12-dev
 
       - libtinfo5 #requried for bazel/setup_clang.sh
-
+      - automake
     override-build: |
       # install balzel
       wget -O /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-$([ $(uname -m) = "aarch64" ] && echo "arm64" || echo "amd64")
       chmod +x /usr/local/bin/bazel
   
       # setup required libs
+      # try 16.0.0
       wget https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz
       tar -xf clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz
       bazel/setup_clang.sh clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04    
       export LLVM_ROOT=$PWD/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04
-      
+      export PATH=${LLVM_ROOT}/bin:${PATH}
+
       sed -i 's/ignore_root_user_error = False/ignore_root_user_error = True/' bazel/repositories_extra.bzl
+      #.bazelrc
+      # #build:linux --fission=dbg,opt
+      # #build:linux --features=per_object_debug_info
+      
+      
+      # https://github.com/envoyproxy/envoy/issues/23797
+      sed -i 's/build:linux --fission=dbg,opt/#build:linux --fission=dbg,opt/' .bazelrc
+      sed -i 's/build:linux --features=per_object_debug_info/#build:linux --features=per_object_debug_info/' .bazelrc
+      echo "build:linux --cxxopt=-Wno-error=thread-safety-reference-return" >> .bazelrc #todo check if works
+      # export NUM_CPUS=10 #for local development
+
+      #copy required files
+      
+      export ENVOY_DOCKER_BUILD_DIR=./build 
+      export BAZEL_BUILD_OPTIONS=--strip=always
       
       bazel build --config=libc++ envoy --cxxopt="-Wno-error=thread-safety-reference-return"
       
-      #copy required files
       mkdir -p ${CRAFT_PART_INSTALL}/bin/ ${CRAFT_PART_INSTALL}/etc/envoy/
       cp $(bazel info bazel-genfiles)/source/exe/envoy-static ${CRAFT_PART_INSTALL}/bin/envoy
-      cp $(bazel info bazel-genfiles)/source/exe/envoy-static ${CRAFT_PART_INSTALL}/envoy
       cp configs/envoyproxy_io_proxy.yaml ${CRAFT_PART_INSTALL}/etc/envoy/envoy.yaml
-      chmod +x ${CRAFT_PART_INSTALL}/bin/envoy
+
+
+#  envoy2:
+#    plugin: nil
+#    source: https://github.com/envoyproxy/envoy-build-tools.git
+#    source-type: git
+#    source-depth: 1
+#    build-environment:
+#      - ANDROID_CLI_TOOLS: https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip
+#      - APT_KEY_TOOLCHAIN: 60C317803A41BA51845E371A1E9377A2BA9EF27F
+#      - APT_KEY_AZUL: 0xB1998361219BD9C9
+#      - APT_KEY_K8S: https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable/xUbuntu_20.04/Release.key
+#      - APT_KEY_KITWARE: https://apt.kitware.com/keys/kitware-archive-latest.asc
+#      - APT_KEY_DOCKER: https://download.docker.com/linux/ubuntu/gpg
+#      - BAZELISK_SHA256SUM: ce52caa51ef9e509fb6b7e5ad892e5cf10feb0794b0aed4d2f36adb00a1a2779
+#      - BAZELISK_SHA256SUM_ARM64: 6070bf70915e92b3a5ce8eee6f4a8a0968bb350be2a98b80b0fd2fc13ce8a254
+#      - BAZELISK_VERSION: 1.18.0
+#      - CLANG_TOOLS_SHA256SUM: 430fadf6b4b287686e7043792e4defc4b54a4911d02bda540aa5acf63a0de5fa
+#      - DEBIAN_FRONTEND: noninteractive
+#      - LANG: en_US.utf8
+#      - LCOV_VERSION: 1.15
+#      - LCOV_SHA256SUM: c1cda2fa33bec9aa2c2c73c87226cfe97de0831887176b45ee523c5e30f8053a
+#      - LIBSTDCXX_EXPECTED_VERSION: 13.1
+#      - LLVM_DISTRO: x86_64-linux-gnu-ubuntu-18.04
+#      - LLVM_DISTRO_ARM64: aarch64-linux-gnu
+#      - LLVM_DISTRO_PPC64LE: powerpc64le-linux-ubuntu-18.04
+#      - LLVM_DOWNLOAD_PREFIX: https://github.com/llvm/llvm-project/releases/download/llvmorg-
+#      - LLVM_SHA256SUM: 2b8a69798e8dddeb57a186ecac217a35ea45607cb2b3cf30014431cff4340ad1
+#      - LLVM_SHA256SUM_ARM64: b750ba3120e6153fc5b316092f19b52cf3eb64e19e5f44bd1b962cb54a20cf0a
+#      - LLVM_SHA256SUM_PPC64LE: 7fc9f07ff0fcf191df93fe4adc1da555e43f62fe1d3ddafb15c943f72b1bda17
+#      - LLVM_VERSION: 16.0.0
+#      - ZULU_INSTALL_DEB: https://cdn.azul.com/zulu/bin/zulu-repo_1.0.0-3_all.deb
 
