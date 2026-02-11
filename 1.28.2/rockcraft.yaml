@@ -19,6 +19,8 @@ services:
     command: "envoy [ -c /etc/envoy/envoy.yaml ]"
     on-failure: shutdown
 
+run-user: _daemon_
+
 entrypoint-service: envoy
 
 parts:
