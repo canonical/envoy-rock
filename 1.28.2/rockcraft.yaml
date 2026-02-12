@@ -98,11 +98,3 @@ parts:
       mkdir -p ${CRAFT_PART_INSTALL}/bin/ ${CRAFT_PART_INSTALL}/etc/envoy/
       cp "linux/${CRAFT_ARCH_BUILD_FOR}/build_envoy_sizeopt_stripped/envoy" ${CRAFT_PART_INSTALL}/bin/envoy
       cp configs/envoyproxy_io_proxy.yaml ${CRAFT_PART_INSTALL}/etc/envoy/envoy.yaml
-
-  non-root-user:
-    plugin: nil
-    after:
-      - envoy
-    override-prime: |
-      craftctl default
-      install -d -o 584792 -g 584792 -m 770 run tmp
